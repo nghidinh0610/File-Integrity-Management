@@ -77,4 +77,45 @@ if ($response -eq "A".ToUpper())
         $hash = Calculate-File-Hash $f.FullName
         "$($hash.Path)|$($hash.Hash)" | Out-File -FilePath .\baseline.txt -Append
 ```
-5) Create a statement when the option is B. Get content from baseline file and start continuously monitoring
+5) Create a statement when the option is B and create a dictionary to later on, use that for monitoring. Get content from baseline file and start continuously monitoring every second
+```objc
+elseif ($response -eq "B".ToUpper()) 
+    
+    $fileHashDictionary = @{}
+
+    $filePathsAndHashes = Get-Content -Path.\baseline.txt
+
+    foreach ($f in $filePathsAndHashes) 
+        $fileHashDictionary.add($f.Split("|")[0],$f.Split("|")[1])
+    
+
+    while($true) 
+        Start-Sleep -Seconds 1
+
+        $files = Get-ChildItem -Path .\Files
+
+        foreach ($f in $files) 
+                    $hash = Calculate-File-Hash $f.FullName
+                    #"$($hash.Path)|$($hash.Hash)" | Out-File -FilePath .\baseline.txt -Append
+```
+6) When a new file is created, send an alert/second until it's back to normal
+```objc
+if ($fileHashDictionary[$hash.Path] -eq $null) 
+                #A new file has been created
+                Write-Host "$($hash.path) has been created" -ForegroundColor Green
+```
+7) When an existing file is modified, send an alert/second until it's back to normal
+```objc
+else 
+     if ($fileHashDictionary[$hash.Path] -eq $hash.Hash)              
+    else 
+        Write-Host "$($hash.Path) has changed!!!" -ForegroundColor Yellow
+```
+8) When an existing file is deleted, send an alert/second until it's back to normal
+```objc
+ foreach ($key in $fileHashDictionary.Keys) 
+                $baselineFileStillExists = Test-Path -Path $key
+                if (-not $baselineFileStillExists)
+                    # One of the baseline files must have been deleted, notify the user
+                    Write-Host "$($key) has been deleted!" -ForegroundColor Red
+```
